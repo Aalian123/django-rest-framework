@@ -1,94 +1,100 @@
 from django.shortcuts import get_object_or_404
-from rest_framework.generics import GenericAPIView
-from rest_framework.mixins import ListModelMixin, CreateModelMixin, RetrieveModelMixin, UpdateModelMixin, \
-    DestroyModelMixin
+from rest_framework.generics import ListAPIView, UpdateAPIView, DestroyAPIView, RetrieveAPIView, ListCreateAPIView \
+    , RetrieveUpdateAPIView, RetrieveDestroyAPIView, RetrieveUpdateDestroyAPIView
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.response import Response
 
 from .models import User
 from .serializers import UserSerializer
 
 
-# ---------Pagination Class
-class Paginate(PageNumberPagination):
-    page_size = 2
+class MyPaginator(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = 'page_size'
 
 
-# ---------List models. It returns the list of objects using "list()" and "queryset".
-class ListModel(ListModelMixin, GenericAPIView):
-    # queryset = User.objects.all()
+# -------- ListApiView using concrete classes. Implements just get method. use list() function.
+class ListView(ListAPIView):
+    queryset = User.objects.all()
     serializer_class = UserSerializer
-    pagination_class = Paginate
 
-    def get(self, request, *args, **kwargs):
-        return self.list(request, *args, **kwargs)
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+
+        # Add pagination
+        paginator = MyPaginator()
+        result_page = paginator.paginate_queryset(queryset, request)
+        serializer = self.get_serializer(result_page, many=True)
+        return paginator.get_paginated_response(serializer.data)
+
+
+# -------- RetrieveApiView using concrete classes. override get_queryset() to filter through query_params.
+class RetrieveView(RetrieveAPIView):
+    serializer_class = UserSerializer
 
     def get_queryset(self):
-        if self.request.user.is_superuser:
-            queryset = User.objects.all()
+        user_id = self.kwargs['pk']
+        queryset = User.objects.get(id=user_id)
+        return User.objects.filter(id=user_id)
+        # return queryset
+
+
+# -------- UpdateVIew using concrete classes. override get_queryset() to filter through query_params.
+class UpdateView(UpdateAPIView):
+    serializer_class = UserSerializer
+
+    def get_queryset(self):
+        user_id = self.kwargs['pk']
+        queryset = get_object_or_404(User, id=user_id)
+        if queryset is not None:
+            return User.objects.filter(id=queryset.id)
         else:
-            user = self.request.user
-            queryset = User.objects.filter(first_name="Aalian")
-        return queryset
+            return Response('Not found')
 
 
-# -------- Create models
-class CreateModel(CreateModelMixin, GenericAPIView):
+# -------- DestroyView using concrete classes. override get_queryset() to filter through query_params.
+class DestroyView(DestroyAPIView):
+    serializer_class = UserSerializer
+
+    def get_queryset(self):
+        user_id = self.kwargs['pk']
+        queryset = get_object_or_404(User, id=user_id)
+        return User.objects.filter(id=queryset.id)
+
+
+# -------- ListCreateAPIView combination of List and Create.
+class ListCreate(ListCreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
-    def post(self, request, *args, **kwargs):
-        return self.create(request, *args, **kwargs)
 
-
-# -------- List and Create models (BOTH)
-class ListCreateModel(ListModelMixin, CreateModelMixin, GenericAPIView):
-    queryset = User.objects.all()
+# -------- RetrieveUpdateAPIView combination of Retrieve and Create.Provide get(), Put(), Patch() methods.
+class RetrieveUpdate(RetrieveUpdateAPIView):
     serializer_class = UserSerializer
-    lookup_field = 'url'
 
-    def get(self, request, *args, **kwargs):
-        return self.list(request, *args, **kwargs)
-
-    def post(self, request, *args, **kwargs):
-        return self.create(request, *args, **kwargs)
+    def get_queryset(self):
+        user_id = self.kwargs['pk']
+        queryset = User.objects.get(id=user_id)
+        return User.objects.filter(id=user_id)
 
 
-# -------- Retrieve model. It returns only one object using "get_object()" based on "lookup_field".
-class RetrieveModel(RetrieveModelMixin, GenericAPIView):
-    queryset = User.objects.all()
+# -------- RetrieveDestroyAPIView.Provide get() and delete() methods.
+class RetrieveDestroy(RetrieveDestroyAPIView):
     serializer_class = UserSerializer
-    lookup_field = ['first_name', 'last_name']
 
-    def get(self, request, *args, **kwargs):
-        return self.retrieve(request, *args, **kwargs)
-
-    # -----overriding object function for multiple_look_up fields
-    def get_object(self):
-        queryset = self.get_queryset()
-        filter = {}
-        for field in self.lookup_field:
-            filter[field] = self.kwargs[field]
-
-        obj = get_object_or_404(queryset, **filter)
-        return obj
+    def get_queryset(self):
+        user_id = self.kwargs['pk']
+        queryset = User.objects.get(id=user_id)
+        return User.objects.filter(id=user_id)
 
 
-# -------- Update model. updating object using "lookup_field". Using "put()" method to update.
-class UpdateModel(UpdateModelMixin, GenericAPIView):
-    queryset = User.objects.all()
+# -------- RetrieveUpdateDestroyAPIView.Provide get(), put(), patch() and delete() methods.
+
+class RetrieveDestroyUpdate(RetrieveUpdateDestroyAPIView):
     serializer_class = UserSerializer
-    lookup_field = 'id'
+    # queryset = User.objects.all()
 
-    def put(self, request, *args, **kwargs):
-        return self.update(request, *args, **kwargs)
-
-
-# -------- Delete model. To delete an instance.
-class DestroyModel(DestroyModelMixin, GenericAPIView):
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
-    lookup_field = 'id'
-
-    def delete(self, request, *args, **kwargs):
-        return self.destroy(request, *args, **kwargs)
-
+    def get_queryset(self):
+        user_id = self.kwargs['pk']
+        queryset = User.objects.get(id=user_id)
+        return User.objects.filter(id=user_id)

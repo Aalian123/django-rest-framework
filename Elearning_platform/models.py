@@ -1,10 +1,11 @@
-# Create your models here.
+
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
 from .managers import UserManager
 
 
+# Create your models here.
 # custom model but subclassed by AbstractUser class
 class User(AbstractUser):
     username = models.CharField(max_length=255)
@@ -30,7 +31,7 @@ class User(AbstractUser):
         verbose_name_plural = 'user'
 
 
-# Course model
+# Teacher model
 class Teacher(User):
     teacher_id = models.BigAutoField(primary_key=True)
     speciality = models.CharField(max_length=200)
