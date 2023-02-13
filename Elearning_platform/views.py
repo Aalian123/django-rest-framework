@@ -1,9 +1,8 @@
 from django.shortcuts import get_object_or_404
-from rest_framework import status
 from rest_framework.generics import GenericAPIView
-from rest_framework.mixins import ListModelMixin, CreateModelMixin, RetrieveModelMixin, UpdateModelMixin, DestroyModelMixin
+from rest_framework.mixins import ListModelMixin, CreateModelMixin, RetrieveModelMixin, UpdateModelMixin, \
+    DestroyModelMixin
 from rest_framework.pagination import PageNumberPagination
-from rest_framework.response import Response
 
 from .models import User
 from .serializers import UserSerializer
@@ -27,8 +26,8 @@ class ListModel(ListModelMixin, GenericAPIView):
         if self.request.user.is_superuser:
             queryset = User.objects.all()
         else:
-            # user = self.request.user
-            queryset = User.objects.filter(first_name='Aalian')
+            user = self.request.user
+            queryset = User.objects.filter(first_name="Aalian")
         return queryset
 
 
@@ -84,16 +83,12 @@ class UpdateModel(UpdateModelMixin, GenericAPIView):
         return self.update(request, *args, **kwargs)
 
 
-# class DestroyModel(DestroyModelMixin, GenericAPIView):
-#     queryset = User.objects.all()
-#     serializer_class = UserSerializer
-#     lookup_field = 'id'
-#
-#     def destroy(self, request, pk ,  *args, **kwargs):
-#         instance = self.get_object()
-#         self.perform_destroy(instance)
-#         return Response(status=status.HTTP_204_NO_CONTENT)
-#
-#     def perform_destroy(self, instance):
-#         instance.delete()
+# -------- Delete model. To delete an instance.
+class DestroyModel(DestroyModelMixin, GenericAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    lookup_field = 'id'
+
+    def delete(self, request, *args, **kwargs):
+        return self.destroy(request, *args, **kwargs)
 
