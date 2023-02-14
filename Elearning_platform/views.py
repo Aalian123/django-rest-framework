@@ -1,100 +1,41 @@
 from django.shortcuts import get_object_or_404
-from rest_framework.generics import ListAPIView, UpdateAPIView, DestroyAPIView, RetrieveAPIView, ListCreateAPIView \
-    , RetrieveUpdateAPIView, RetrieveDestroyAPIView, RetrieveUpdateDestroyAPIView
-from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
-
+from rest_framework.viewsets import ViewSet
 from .models import User
 from .serializers import UserSerializer
 
 
-class MyPaginator(PageNumberPagination):
-    page_size = 10
-    page_size_query_param = 'page_size'
+# --------Viewsets
+class UserView(ViewSet):
 
-
-# -------- ListApiView using concrete classes. Implements just get method. use list() function.
-class ListView(ListAPIView):
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
-
-    def list(self, request, *args, **kwargs):
-        queryset = self.filter_queryset(self.get_queryset())
-
-        # Add pagination
-        paginator = MyPaginator()
-        result_page = paginator.paginate_queryset(queryset, request)
-        serializer = self.get_serializer(result_page, many=True)
-        return paginator.get_paginated_response(serializer.data)
-
-
-# -------- RetrieveApiView using concrete classes. override get_queryset() to filter through query_params.
-class RetrieveView(RetrieveAPIView):
-    serializer_class = UserSerializer
-
-    def get_queryset(self):
-        user_id = self.kwargs['pk']
-        queryset = User.objects.get(id=user_id)
-        return User.objects.filter(id=user_id)
-        # return queryset
-
-
-# -------- UpdateVIew using concrete classes. override get_queryset() to filter through query_params.
-class UpdateView(UpdateAPIView):
-    serializer_class = UserSerializer
-
-    def get_queryset(self):
-        user_id = self.kwargs['pk']
-        queryset = get_object_or_404(User, id=user_id)
-        if queryset is not None:
-            return User.objects.filter(id=queryset.id)
+    def list(self, request, pk=None):
+        pk = pk
+        if pk is not None:
+            queryset = User.objects.get(pk=pk)
+            serializer = UserSerializer(queryset, many=True)
+            return Response(serializer.data)
         else:
-            return Response('Not found')
+            queryset = User.objects.all()
+            serializer = UserSerializer(queryset, many=True)
+            return Response(serializer.data)
 
+    def create(self, request):
 
-# -------- DestroyView using concrete classes. override get_queryset() to filter through query_params.
-class DestroyView(DestroyAPIView):
-    serializer_class = UserSerializer
+        serializer = UserSerializer(data=request.data)
+        import pdb
+        pdb.set_trace()
+        if serializer.is_valid():
+            serializer.save()
+        return Response(serializer.data)
 
-    def get_queryset(self):
-        user_id = self.kwargs['pk']
-        queryset = get_object_or_404(User, id=user_id)
-        return User.objects.filter(id=queryset.id)
+    def update(self, request, pk=None):
+        instance = User.objects.get(id=pk)
+        serializer = UserSerializer(instance, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+        return Response(serializer.data)
 
-
-# -------- ListCreateAPIView combination of List and Create.
-class ListCreate(ListCreateAPIView):
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
-
-
-# -------- RetrieveUpdateAPIView combination of Retrieve and Create.Provide get(), Put(), Patch() methods.
-class RetrieveUpdate(RetrieveUpdateAPIView):
-    serializer_class = UserSerializer
-
-    def get_queryset(self):
-        user_id = self.kwargs['pk']
-        queryset = User.objects.get(id=user_id)
-        return User.objects.filter(id=user_id)
-
-
-# -------- RetrieveDestroyAPIView.Provide get() and delete() methods.
-class RetrieveDestroy(RetrieveDestroyAPIView):
-    serializer_class = UserSerializer
-
-    def get_queryset(self):
-        user_id = self.kwargs['pk']
-        queryset = User.objects.get(id=user_id)
-        return User.objects.filter(id=user_id)
-
-
-# -------- RetrieveUpdateDestroyAPIView.Provide get(), put(), patch() and delete() methods.
-
-class RetrieveDestroyUpdate(RetrieveUpdateDestroyAPIView):
-    serializer_class = UserSerializer
-    # queryset = User.objects.all()
-
-    def get_queryset(self):
-        user_id = self.kwargs['pk']
-        queryset = User.objects.get(id=user_id)
-        return User.objects.filter(id=user_id)
+    def retrieve(self, request, pk=None):
+        instance = User.objects.get(id=pk)
+        serializer = UserSerializer(instance)
+        return Response(serializer.data)
