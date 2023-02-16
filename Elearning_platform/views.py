@@ -1,41 +1,60 @@
-from django.shortcuts import get_object_or_404
+from django.contrib.auth import authenticate
+from rest_framework.authtoken.models import Token
 from rest_framework.response import Response
-from rest_framework.viewsets import ViewSet
+from rest_framework.views import APIView
+from rest_framework.viewsets import ModelViewSet
+from rest_framework.authentication import TokenAuthentication
+
 from .models import User
-from .serializers import UserSerializer
+from .serializers import UserSerializer, LoginSerializer
 
 
 # --------Viewsets
-class UserView(ViewSet):
+class UserView(ModelViewSet):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
 
-    def list(self, request, pk=None):
-        pk = pk
-        if pk is not None:
-            queryset = User.objects.get(pk=pk)
-            serializer = UserSerializer(queryset, many=True)
-            return Response(serializer.data)
+
+class LoginView(APIView):
+
+    def post(self, request, *args, **kwargs):
+        serializer = LoginSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        auth = authenticate(username=serializer.validated_data['email'], password=serializer.validated_data['password'])
+        if auth:
+            try:
+                email = User.objects.get(email=serializer.validated_data['email'])
+            except:
+                return Response({'Fatal error': 'Detection of extinct animals'})
+            user = User.objects.get(email=email)
+            # user = serializer.validated_data['user']
+            token, created = Token.objects.get_or_create(user=user)
+            person = UserSerializer(user).data
+            return Response({'token': token.key, 'user': person})
         else:
-            queryset = User.objects.all()
-            serializer = UserSerializer(queryset, many=True)
-            return Response(serializer.data)
+            return Response({'Fatal error': 'Detection of extinct animals'})
 
-    def create(self, request):
+    # serializer_class = LoginSerializer
+    # authentication_classes = [TokenAuthentication]
+    #
+    # def create(self, request, *args, **kwargs):
+    #     serializer = AuthTokenSerializer(data=request.data)
+    #     serializer.is_valid(raise_exception=True)
+    #     user = serializer.validated_data['user']
+    #     token = Token.objects.create(user)
+    #
+    #     return Response({'status': 'logged in successfully'})
+    #
+    # def list(self, request, *args, **kwargs):
+    #     user=self.request.user
+    #     return Response({"data":user})
+    # def get_queryset(self):
+    #     pass
 
-        serializer = UserSerializer(data=request.data)
-        import pdb
-        pdb.set_trace()
-        if serializer.is_valid():
-            serializer.save()
-        return Response(serializer.data)
 
-    def update(self, request, pk=None):
-        instance = User.objects.get(id=pk)
-        serializer = UserSerializer(instance, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-        return Response(serializer.data)
+class LogoutView(APIView):
+    authentication_classes = [TokenAuthentication]
 
-    def retrieve(self, request, pk=None):
-        instance = User.objects.get(id=pk)
-        serializer = UserSerializer(instance)
-        return Response(serializer.data)
+    def get(self, request, *args, **kwargs):
+        request.user.auth_token.delete()
+        return Response({'ok': 'OO gya ee'})
